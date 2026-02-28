@@ -473,6 +473,9 @@
         .canny-val { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent); width: 24px; text-align: right; }
         .kernel-row.hidden { opacity: 0.4; pointer-events: none; }
 
+        .noise-controls { display: none; }
+        .noise-controls.show { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; background: var(--surf2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px; }
+
         /* ── Category Switcher ──────────────────────────────────────────── */
         .cat-switch { display: flex; background: var(--surf3); border-radius: var(--r-sm); padding: 4px; margin-bottom: 16px; gap: 4px; }
         .cat-btn { flex: 1; padding: 8px; border: none; background: transparent; color: var(--text2); font-family: 'Figtree', sans-serif; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -483,14 +486,12 @@
 </head>
 <body class="{% if mode == 'histogram' %}mode-hist{% endif %}">
 
-<!-- ── Topbar ──────────────────────────────────────────────────────────────── -->
 <nav class="topbar">
     <div class="topbar-brand">
         <div class="brand-mark"></div>
         <span class="brand-name">Vision<span>Lab</span></span>
     </div>
 
-    <!-- Mode switcher -->
     <div class="mode-switch">
         <form method="POST" style="margin:0">
             {% csrf_token %}
@@ -515,7 +516,6 @@
     <span class="topbar-meta">COMPUTER VISION · CV LAB</span>
 </nav>
 
-<!-- ── Error ───────────────────────────────────────────────────────────────── -->
 {% if error %}
 <div style="max-width:1260px;margin:16px auto 0;padding:0 24px">
     <div class="err-box">
@@ -525,13 +525,10 @@
 </div>
 {% endif %}
 
-<!-- ── Page ────────────────────────────────────────────────────────────────── -->
 <div class="page">
 
-    <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
     <aside class="sidebar">
 
-        <!-- Upload (shared by both modes) -->
         <div class="block">
             <div class="block-header">
                 <svg class="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -560,7 +557,6 @@
             </div>
         </div>
 
-        <!-- ─── FILTER MODE CONTROLS ───────────────────────────────────── -->
         <div class="panel-filter">
             <div class="block">
                 <div class="block-header">
@@ -568,6 +564,7 @@
                     <span class="block-title">Apply Filter</span>
                 </div>
                 <div class="block-body">
+                    
                     <div class="cat-switch">
                         <button type="button" class="cat-btn active" id="btn-cat-filters" onclick="setCategory('filters')">Filters</button>
                         <button type="button" class="cat-btn" id="btn-cat-noise" onclick="setCategory('noise')">Noise</button>
@@ -595,12 +592,12 @@
                         <div class="fgroup hpf" id="g-hpf">
                             <div class="fcard" id="c-sobel" onclick="pick('sobel')">
                                 <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                                <div class="fcard-info"><span class="fcard-name">Sobel Filter</span><span class="fcard-kernel">Generalised Sobel, k×k</span></div>
+                                <div class="fcard-info"><span class="fcard-name">Sobel Filter</span><span class="fcard-kernel">Generalised Sobel, size k×k</span></div>
                                 <div class="sel-indicator"></div>
                             </div>
                             <div class="fcard" id="c-prewitt" onclick="pick('prewitt')">
                                 <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-                                <div class="fcard-info"><span class="fcard-name">Prewitt Filter</span><span class="fcard-kernel">Generalised Prewitt, k×k</span></div>
+                                <div class="fcard-info"><span class="fcard-name">Prewitt Filter</span><span class="fcard-kernel">Generalised Prewitt, size k×k</span></div>
                                 <div class="sel-indicator"></div>
                             </div>
                             <div class="fcard" id="c-roberts" onclick="pick('roberts')">
@@ -610,7 +607,7 @@
                             </div>
                             <div class="fcard" id="c-canny" onclick="pick('canny')">
                                 <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12 Q4 4 8 4 Q12 4 12 12 Q12 20 16 20 Q20 20 22 12"/></svg></div>
-                                <div class="fcard-info"><span class="fcard-name">Canny Detector</span><span class="fcard-kernel">Gaussian+NMS (OpenCV)</span></div>
+                                <div class="fcard-info"><span class="fcard-name">Canny Detector</span><span class="fcard-kernel">Gaussian + NMS (OpenCV)</span></div>
                                 <div class="sel-indicator"></div>
                             </div>
                         </div>
@@ -636,54 +633,12 @@
                         </div>
                     </div>
 
-                    <div class="fgroup hpf" id="g-hpf">
-                        <div class="fcard" id="c-sobel" onclick="pick('sobel')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Sobel Filter</span><span class="fcard-kernel">Generalised Sobel, size k×k</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fcard" id="c-prewitt" onclick="pick('prewitt')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Prewitt Filter</span><span class="fcard-kernel">Generalised Prewitt, size k×k</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fcard" id="c-roberts" onclick="pick('roberts')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="19" x2="19" y2="5"/><line x1="5" y1="5" x2="19" y2="19"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Roberts Cross</span><span class="fcard-kernel">Fixed 2×2 diagonal kernels (OpenCV)</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fcard" id="c-canny" onclick="pick('canny')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12 Q4 4 8 4 Q12 4 12 12 Q12 20 16 20 Q20 20 22 12"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Canny Detector</span><span class="fcard-kernel">Gaussian + NMS + hysteresis (OpenCV)</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fgroup noise" id="g-noise">
-                        <div class="fcard" id="c-uniform_noise" onclick="pick('uniform_noise')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Uniform Noise</span><span class="fcard-kernel">cv2.randu</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fcard" id="c-gaussian_noise" onclick="pick('gaussian_noise')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Gaussian Noise</span><span class="fcard-kernel">cv2.randn</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                        <div class="fcard" id="c-salt_pepper_noise" onclick="pick('salt_pepper_noise')">
-                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"/></svg></div>
-                            <div class="fcard-info"><span class="fcard-name">Salt & Pepper</span><span class="fcard-kernel">Probability Matrix</span></div>
-                            <div class="sel-indicator"></div>
-                        </div>
-                    </div>
-                    </div>
-
                     <div class="divider"></div>
 
-                    <!-- Roberts note (shown only when roberts selected) -->
                     <div class="roberts-note" id="robertsNote">
                         ⚡ Roberts uses fixed 2×2 kernels — kernel size is ignored
                     </div>
 
-                    <!-- Kernel Size Control -->
                     <div class="kernel-row" id="kernelRow">
                         <label>Kernel Size</label>
                         <div class="kernel-stepper" id="kernelStepper">
@@ -694,7 +649,6 @@
                         <span class="kernel-tag" id="kernelTag">{{ kernel_size }}×{{ kernel_size }}</span>
                     </div>
 
-                    <!-- Canny threshold controls (shown only when canny selected) -->
                     <div class="canny-controls" id="cannyControls">
                         <div class="canny-title">Hysteresis Thresholds</div>
                         <div class="canny-row">
@@ -711,16 +665,27 @@
                         </div>
                     </div>
 
+                    <div class="noise-controls" id="noiseControls">
+                        <div class="canny-title">Noise Intensity</div>
+                        <div class="canny-row">
+                            <label>Level</label>
+                            <input type="range" id="noiseSlider" min="1" max="100" value="{{ noise_amount|default:5 }}" oninput="updateNoise()"/>
+                            <span class="canny-val" id="noiseVal">{{ noise_amount|default:5 }}%</span>
+                        </div>
+                    </div>
+
                     <form method="POST" onsubmit="return doApply(this)">
                         {% csrf_token %}
-                        <input type="hidden" name="action"      value="apply_filter"/>
-                        <input type="hidden" name="filter_name" id="hfilter"     value=""/>
-                        <input type="hidden" name="kernel_size" id="hkernelsize" value="{{ kernel_size }}"/>
-                        <input type="hidden" name="canny_low"   id="hcannylow"   value="{{ canny_low }}"/>
-                        <input type="hidden" name="canny_high"  id="hcannyhigh"  value="{{ canny_high }}"/>
+                        <input type="hidden" name="action"       value="apply_filter"/>
+                        <input type="hidden" name="filter_name"  id="hfilter"      value=""/>
+                        <input type="hidden" name="kernel_size"  id="hkernelsize"  value="{{ kernel_size }}"/>
+                        <input type="hidden" name="canny_low"    id="hcannylow"    value="{{ canny_low }}"/>
+                        <input type="hidden" name="canny_high"   id="hcannyhigh"   value="{{ canny_high }}"/>
+                        <input type="hidden" name="noise_amount" id="hnoiseamount" value="{{ noise_amount|default:5 }}"/>
+                        
                         <button class="btn btn-primary" type="submit" {% if not current_url %}disabled{% endif %}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                            Apply Filter
+                            <span id="btnApplyText">Apply Filter</span>
                         </button>
                     </form>
 
@@ -744,10 +709,7 @@
                     </div>
                 </div>
             </div>
-        </div><!-- /panel-filter -->
-
-        <!-- ─── HISTOGRAM MODE CONTROLS ───────────────────────────────── -->
-        <div class="panel-hist">
+        </div><div class="panel-hist">
             <div class="block">
                 <div class="block-header">
                     <svg class="block-header-icon green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -757,7 +719,6 @@
                 </div>
                 <div class="block-body">
 
-                    <!-- Info card -->
                     <div style="background:var(--surf2);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:6px;padding:12px 14px;margin-bottom:14px;">
                         <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--green);letter-spacing:1px;margin-bottom:6px;">FORMULA</div>
                         <div style="font-size:.8rem;color:var(--text2);line-height:1.6;">
@@ -768,7 +729,6 @@
                         </div>
                     </div>
 
-                    <!-- Draw histogram -->
                     <form method="POST" style="margin-bottom:10px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="draw_histogram"/>
@@ -778,7 +738,6 @@
                         </button>
                     </form>
 
-                    <!-- Equalize -->
                     <form method="POST" style="margin-bottom:10px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="equalize"/>
@@ -788,7 +747,6 @@
                         </button>
                     </form>
 
-                    <!-- Reset -->
                     <form method="POST">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="reset"/>
@@ -799,14 +757,10 @@
                     </form>
                 </div>
             </div>
-        </div><!-- /panel-hist -->
+        </div></aside>
 
-    </aside>
-
-    <!-- ═══ MAIN CONTENT ═══════════════════════════════════════════════════ -->
     <section class="right">
 
-        <!-- ─── FILTER MODE RIGHT ───────────────────────────────────────── -->
         <div class="right-filter">
         {% if current_url %}
 
@@ -869,10 +823,7 @@
                 <p class="empty-sub">Upload an image using the panel on the left to begin applying filters.</p>
             </div>
         {% endif %}
-        </div><!-- /right-filter -->
-
-        <!-- ─── HISTOGRAM MODE RIGHT ────────────────────────────────────── -->
-        <div class="right-hist">
+        </div><div class="right-hist">
         {% if has_image %}
 
             <div class="status-bar">
@@ -890,7 +841,6 @@
                 </div>
             </div>
 
-            <!-- Images row -->
             <div class="img-grid">
                 <div class="ibox">
                     <div class="ibox-head">
@@ -916,7 +866,6 @@
                 </div>
             </div>
 
-            <!-- Original histogram -->
             {% if hist_orig_json != 'null' %}
             <div class="hist-panel">
                 <div class="hist-panel-header">
@@ -932,7 +881,6 @@
             </div>
             {% endif %}
 
-            <!-- Equalized histogram -->
             {% if hist_eq_json != 'null' %}
             <div class="hist-panel">
                 <div class="hist-panel-header">
@@ -962,16 +910,19 @@
                 <p class="empty-sub">Upload an image first, then draw its histogram or equalize contrast.</p>
             </div>
         {% endif %}
-        </div><!-- /right-hist -->
-
-    </section>
-</div><!-- /page -->
-
-<script>
+        </div></section>
+</div><script>
 // ── File name preview ──────────────────────────────────────────────────────
 document.getElementById('finput').addEventListener('change', function() {
     document.getElementById('fname').textContent = this.files[0]?.name ?? '';
 });
+
+// ── Update Noise slider text and hidden input ──────────────────────────────
+function updateNoise() {
+    const val = document.getElementById('noiseSlider').value;
+    document.getElementById('noiseVal').textContent = val + '%';
+    document.getElementById('hnoiseamount').value = val;
+}
 
 // ── Filter selection ───────────────────────────────────────────────────────
 let chosen = '';
@@ -984,15 +935,19 @@ function pick(name) {
 
     // Show/hide Roberts note
     const robertsNote = document.getElementById('robertsNote');
-    robertsNote.classList.toggle('show', name === 'roberts');
+    if (robertsNote) robertsNote.classList.toggle('show', name === 'roberts');
 
     // Dim kernel stepper for roberts (fixed 2×2)
     const kernelRow = document.getElementById('kernelRow');
-    kernelRow.classList.toggle('hidden', name === 'roberts');
+    if (kernelRow) kernelRow.classList.toggle('hidden', name === 'roberts');
 
     // Show Canny threshold controls only for canny
     const cannyControls = document.getElementById('cannyControls');
-    cannyControls.classList.toggle('show', name === 'canny');
+    if (cannyControls) cannyControls.classList.toggle('show', name === 'canny');
+
+    // Show Noise amount controls only if a noise filter is selected
+    const noiseControls = document.getElementById('noiseControls');
+    if (noiseControls) noiseControls.classList.toggle('show', name.includes('noise'));
 }
 
 function updateCanny() {
@@ -1010,6 +965,7 @@ function updateCanny() {
     document.getElementById('hcannylow').value          = low;
     document.getElementById('hcannyhigh').value         = high;
 }
+
 // ── Category Switching ─────────────────────────────────────────────────────
 function setCategory(cat) {
     // Update button styles
@@ -1032,8 +988,17 @@ function setCategory(cat) {
     // Hide special controls
     const robertsNote = document.getElementById('robertsNote');
     const cannyControls = document.getElementById('cannyControls');
-    if(robertsNote) robertsNote.classList.remove('show');
-    if(cannyControls) cannyControls.classList.remove('show');
+    const noiseControls = document.getElementById('noiseControls');
+    
+    if (robertsNote) robertsNote.classList.remove('show');
+    if (cannyControls) cannyControls.classList.remove('show');
+    if (noiseControls) noiseControls.classList.remove('show');
+
+    // ── ADD THESE 3 LINES: Change Apply Button Text ──
+    const btnText = document.getElementById('btnApplyText');
+    if (btnText) {
+        btnText.textContent = (cat === 'noise') ? 'Apply Noise' : 'Apply Filter';
+    }
 }
 
 // ── Tab Switching (For Filters Only) ───────────────────────────────────────
@@ -1054,28 +1019,51 @@ function switchTab(type) {
         const robertsNote = document.getElementById('robertsNote');
         const cannyControls = document.getElementById('cannyControls');
         const kernelRow = document.getElementById('kernelRow');
+        const noiseControls = document.getElementById('noiseControls');
         
-        if(robertsNote) robertsNote.classList.remove('show');
-        if(cannyControls) cannyControls.classList.remove('show');
-        if(kernelRow) kernelRow.classList.remove('hidden');
+        if (robertsNote) robertsNote.classList.remove('show');
+        if (cannyControls) cannyControls.classList.remove('show');
+        if (kernelRow) kernelRow.classList.remove('hidden');
+        if (noiseControls) noiseControls.classList.remove('show');
     }
 }
+
 function doApply(form) {
     if (!chosen) {
-        const panel = document.getElementById('g-' + (document.getElementById('t-lpf').classList.contains('on') ? 'lpf' : 'hpf'));
-        panel.style.outline = '1px solid rgba(255,77,106,.5)';
-        panel.style.borderRadius = '6px';
-        setTimeout(() => { panel.style.outline = ''; }, 1200);
+        // Find which group to outline based on the active category and tab
+        let panel;
+        if (document.getElementById('sec-noise').classList.contains('show')) {
+            panel = document.getElementById('g-noise');
+        } else {
+            panel = document.getElementById('g-' + (document.getElementById('t-lpf').classList.contains('on') ? 'lpf' : 'hpf'));
+        }
+        
+        if (panel) {
+            panel.style.outline = '1px solid rgba(255,77,106,.5)';
+            panel.style.borderRadius = '6px';
+            setTimeout(() => { panel.style.outline = ''; }, 1200);
+        }
         return false;
     }
     form.querySelector('#hfilter').value = chosen;
     return true;
 }
+
 // Restore last filter selection on reload
 (function() {
     const last = "{{ filter_name }}";
     if (!last) return;
-    if (last === 'sobel' || last === 'prewitt') switchTab('hpf');
+    
+    if (last.includes('noise')) {
+        setCategory('noise');
+    } else {
+        setCategory('filters');
+        if (last === 'sobel' || last === 'prewitt' || last === 'roberts' || last === 'canny') {
+            switchTab('hpf');
+        } else {
+            switchTab('lpf');
+        }
+    }
     pick(last);
 })();
 

@@ -99,7 +99,7 @@ def _canny(rgb, kernel_size=3, low_thresh=50, high_thresh=150):
 
 
 def apply_filter(img_array, filter_name, kernel_size=3,
-                 canny_low=50, canny_high=150):
+                 canny_low=50, canny_high=150, noise_amount=5):
     """
     Dispatch to the correct filter implementation.
 
@@ -145,11 +145,19 @@ def apply_filter(img_array, filter_name, kernel_size=3,
                         low_thresh=canny_low, high_thresh=canny_high)
         
     elif filter_name == "uniform_noise":
-        result = add_uniform_noise(rgb)
+        # Map 100% noise to a maximum range of +/- 127
+        intensity = int((noise_amount / 100.0) * 127)
+        result = add_uniform_noise(rgb, low=-intensity, high=intensity)
+        
     elif filter_name == "gaussian_noise":
-        result = add_gaussian_noise(rgb)
+        # Map 100% noise to a standard deviation of 127
+        std = int((noise_amount / 100.0) * 127)
+        result = add_gaussian_noise(rgb, mean=0, std=std)
+        
     elif filter_name == "salt_pepper_noise":
-        result = add_salt_and_pepper_noise(rgb)
+        # Map 100% noise to a 1.0 probability (split evenly between salt and pepper)
+        prob = noise_amount / 100.0
+        result = add_salt_and_pepper_noise(rgb, salt_prob=prob/2, pepper_prob=prob/2)
 
     else:
         return img_array
@@ -239,6 +247,7 @@ def home(request):
         ("kernel_size",     3),
         ("canny_low",       50),
         ("canny_high",      150),
+        ("noise_amount",    5),
     ]:
         if key not in request.session:
             request.session[key] = default
@@ -277,6 +286,7 @@ def home(request):
             raw_k       = request.POST.get("kernel_size",  "3")
             raw_low     = request.POST.get("canny_low",    "50")
             raw_high    = request.POST.get("canny_high",   "150")
+            raw_noise   = request.POST.get("noise_amount", "5")
 
             if not history:
                 error = "Please upload an image first."
@@ -305,9 +315,24 @@ def home(request):
                 if k_error:
                     error = k_error
                 else:
-                    request.session["kernel_size"] = k
-                    request.session["canny_low"]   = canny_low
-                    request.session["canny_high"]  = canny_high
+                    # Parse and clamp noise amount between 1 and 100
+                    try:
+                        noise_amount = max(1, min(100, int(raw_noise)))
+                    except ValueError:
+                        noise_amount = 5
+                        
+                    request.session["kernel_size"]  = k
+                    request.session["canny_low"]    = canny_low
+                    request.session["canny_high"]   = canny_high
+                    request.session["noise_amount"] = noise_amount
+
+                    # ── ADD THIS BLOCK TO PREVENT NOISE STACKING ──
+                    last_filter = request.session.get("img_last_filter", "")
+                    if "noise" in filter_name and "noise" in last_filter:
+                        # If applying noise back-to-back, discard the previous noisy 
+                        # image so the new noise applies to the clean image before it.
+                        if len(history) > 1:
+                            history.pop()
 
                     filepath = url_to_filepath(history[-1])
                     try:
@@ -315,7 +340,8 @@ def home(request):
                         arr          = np.array(pil_img)
                         filtered_arr = apply_filter(
                             arr, filter_name, kernel_size=k,
-                            canny_low=canny_low, canny_high=canny_high
+                            canny_low=canny_low, canny_high=canny_high,
+                            noise_amount=noise_amount
                         )
                         filtered_pil = Image.fromarray(filtered_arr)
                         prefix_name  = (f"{filter_name}_{k}x{k}"
@@ -389,6 +415,7 @@ def home(request):
         "kernel_size":    request.session.get("kernel_size", 3),
         "canny_low":      request.session.get("canny_low",  50),
         "canny_high":     request.session.get("canny_high", 150),
+        "noise_amount":   request.session.get("noise_amount", 5),
         "error":          error,
         "hist_orig_json": json.dumps(hist_orig_data) if hist_orig_data else "null",
         "hist_eq_json":   json.dumps(hist_eq_data)   if hist_eq_data   else "null",
