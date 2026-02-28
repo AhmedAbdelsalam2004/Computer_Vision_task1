@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Vision Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #080a0f;
+            --bg2:       #0c0e15;
+            --surf:      #10131c;
+            --surf2:     #161924;
+            --surf3:     #1d2130;
+            --border:    #232840;
+            --border2:   #2d3350;
+            --accent:    #4f8eff;
+            --accent-dim:#1e3a7a;
+            --cyan:      #00d4ff;
+            --cyan-dim:  #003d4d;
+            --green:     #4fffb0;
+            --green-dim: #0a3020;
+            --amber:     #f5a623;
+            --red:       #ff4d6a;
+            --red-dim:   #4d1020;
+            --purple:    #a78bfa;
+            --text:      #d8dff0;
+            --text2:     #8892b0;
+            --text3:     #4a5278;
+            --r:         10px;
+            --r-sm:      6px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Figtree', sans-serif;
+            min-height: 100vh;
+            padding: 0 0 80px;
+            background-image: radial-gradient(circle, #1e2540 1px, transparent 1px);
+            background-size: 28px 28px;
+            background-attachment: fixed;
+        }
+
+        /* ── Topbar ─────────────────────────────────────────────────────── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 56px;
+            background: rgba(8,10,15,.9);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .topbar-brand { display: flex; align-items: center; gap: 10px; }
+        .brand-mark {
+            width: 28px; height: 28px;
+            border: 1.5px solid var(--accent);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .brand-mark::before {
+            content: '';
+            position: absolute; inset: 3px;
+            background: linear-gradient(135deg, var(--accent), var(--cyan));
+            border-radius: 2px; opacity: .7;
+        }
+        .brand-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: .95rem; letter-spacing: .5px; }
+        .brand-name span { color: var(--accent); }
+        .topbar-meta { font-family: 'JetBrains Mono', monospace; font-size: .65rem; color: var(--text3); letter-spacing: 1px; }
+
+        /* ── Mode switcher (topbar) ─────────────────────────────────────── */
+        .mode-switch {
+            display: flex;
+            background: var(--surf2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .mode-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 14px;
+            border-radius: 5px;
+            border: none;
+            background: transparent;
+            color: var(--text3);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .67rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all .2s;
+            font-weight: 500;
+        }
+        .mode-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .mode-btn.active-filter {
+            background: var(--surf3);
+            color: var(--accent);
+            border: 1px solid var(--accent-dim);
+            box-shadow: 0 0 12px rgba(79,142,255,.15);
+        }
+        .mode-btn.active-hist {
+            background: var(--surf3);
+            color: var(--green);
+            border: 1px solid var(--green-dim);
+            box-shadow: 0 0 12px rgba(79,255,176,.15);
+        }
+
+        /* ── Main layout ────────────────────────────────────────────────── */
+        .page {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 0;
+            max-width: 1260px;
+            margin: 0 auto;
+            padding: 28px 24px 0;
+        }
+        @media (max-width: 760px) { .page { grid-template-columns: 1fr; } }
+
+        .sidebar { padding-right: 20px; }
+
+        /* ── Block ──────────────────────────────────────────────────────── */
+        .block {
+            background: var(--surf);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+        .block-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surf2);
+        }
+        .block-header-icon { width: 22px; height: 22px; color: var(--accent); flex-shrink: 0; }
+        .block-header-icon.green { color: var(--green); }
+        .block-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .68rem; font-weight: 500;
+            letter-spacing: 1.8px; text-transform: uppercase; color: var(--text2);
+        }
+        .block-body { padding: 16px; }
+
+        /* ── Drop zone ──────────────────────────────────────────────────── */
+        .drop-zone {
+            position: relative;
+            border: 1.5px dashed var(--border2);
+            border-radius: var(--r-sm);
+            padding: 28px 16px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: border-color .2s, background .2s;
+            background: var(--surf2);
+        }
+        .drop-zone:hover { border-color: var(--accent); background: rgba(79,142,255,.04); }
+        .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .dz-icon { width: 36px; height: 36px; margin: 0 auto 10px; color: var(--text3); transition: color .2s; }
+        .drop-zone:hover .dz-icon { color: var(--accent); }
+        .dz-label { font-size: .82rem; color: var(--text2); line-height: 1.5; }
+        .dz-label strong { color: var(--accent); font-weight: 600; }
+        .dz-formats { font-family: 'JetBrains Mono', monospace; font-size: .65rem; color: var(--text3); margin-top: 6px; }
+        #fname { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--cyan); margin-top: 8px; min-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ── Buttons ────────────────────────────────────────────────────── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            width: 100%; padding: 10px 16px;
+            border-radius: var(--r-sm); border: none; cursor: pointer;
+            font-family: 'Figtree', sans-serif; font-size: .84rem; font-weight: 600;
+            transition: all .18s; letter-spacing: .2px;
+        }
+        .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .btn:active { transform: scale(.98); }
+        .btn:disabled { opacity: .3; cursor: not-allowed; pointer-events: none; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #2d6be4 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(79,142,255,.25), inset 0 1px 0 rgba(255,255,255,.1);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 28px rgba(79,142,255,.45); transform: translateY(-1px); }
+
+        .btn-green {
+            background: linear-gradient(135deg, var(--green) 0%, #00b87a 100%);
+            color: #080a0f;
+            box-shadow: 0 4px 20px rgba(79,255,176,.2), inset 0 1px 0 rgba(255,255,255,.15);
+            font-weight: 700;
+        }
+        .btn-green:hover { box-shadow: 0 6px 28px rgba(79,255,176,.35); transform: translateY(-1px); }
+
+        .btn-purple {
+            background: linear-gradient(135deg, var(--purple) 0%, #7c3aed 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(167,139,250,.2);
+        }
+        .btn-purple:hover { box-shadow: 0 6px 28px rgba(167,139,250,.35); transform: translateY(-1px); }
+
+        .btn-secondary {
+            background: var(--surf3); color: var(--text2); border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,255,.07); }
+
+        .btn-outline-red {
+            background: transparent; color: var(--red); border: 1px solid rgba(255,77,106,.2);
+        }
+        .btn-outline-red:hover { border-color: var(--red); background: rgba(255,77,106,.07); }
+
+        /* ── Tabs ───────────────────────────────────────────────────────── */
+        .tabs {
+            display: flex; background: var(--surf2);
+            border: 1px solid var(--border); border-radius: var(--r-sm);
+            padding: 3px; gap: 3px; margin-bottom: 14px;
+        }
+        .tab {
+            flex: 1; padding: 7px 8px; border-radius: 4px; border: none;
+            background: transparent; color: var(--text3); cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; font-size: .66rem;
+            text-transform: uppercase; letter-spacing: 1px; transition: all .18s; font-weight: 500;
+        }
+        .tab.on { background: var(--surf3); color: var(--text); border: 1px solid var(--border2); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+        /* ── Filter cards ───────────────────────────────────────────────── */
+        .fgroup { display: none; flex-direction: column; gap: 6px; }
+        .fgroup.show { display: flex; }
+
+        .fcard {
+            border: 1px solid var(--border); border-radius: var(--r-sm);
+            padding: 12px 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px;
+            transition: border-color .18s, background .18s, box-shadow .18s;
+            background: var(--surf2); user-select: none;
+            position: relative; overflow: hidden;
+        }
+        .fcard::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px; background: transparent; transition: background .18s; border-radius: 2px 0 0 2px;
+        }
+        .fcard:hover { border-color: var(--border2); background: var(--surf3); }
+        .fcard.sel { border-color: var(--accent); background: rgba(79,142,255,.07); box-shadow: 0 0 0 1px rgba(79,142,255,.15) inset; }
+        .fcard.sel::before { background: var(--accent); }
+
+        .fcard-icon {
+            width: 34px; height: 34px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .fcard-icon svg { width: 16px; height: 16px; }
+        .lpf .fcard-icon { background: rgba(0,212,255,.1); color: var(--cyan); }
+        .hpf .fcard-icon { background: rgba(255,77,106,.1); color: var(--red); }
+
+        .fcard-info { min-width: 0; }
+        .fcard-name { font-size: .84rem; font-weight: 600; color: var(--text); display: block; margin-bottom: 3px; }
+        .fcard-kernel { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .sel-indicator {
+            margin-left: auto; width: 6px; height: 6px;
+            border-radius: 50%; background: var(--accent); flex-shrink: 0;
+            opacity: 0; transition: opacity .18s;
+        }
+        .fcard.sel .sel-indicator { opacity: 1; }
+
+        /* ── Divider ────────────────────────────────────────────────────── */
+        .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border2), transparent); margin: 14px 0; }
+
+        /* ── Action row ─────────────────────────────────────────────────── */
+        .act-row { display: flex; gap: 8px; margin-top: 10px; }
+        .act-row form { flex: 1; }
+
+        /* ── Right panel ────────────────────────────────────────────────── */
+        .right { display: flex; flex-direction: column; gap: 16px; }
+
+        /* ── Status bar ─────────────────────────────────────────────────── */
+        .status-bar {
+            display: flex; align-items: center; gap: 16px;
+            padding: 10px 16px; background: var(--surf);
+            border: 1px solid var(--border); border-radius: var(--r);
+            font-family: 'JetBrains Mono', monospace; font-size: .67rem; color: var(--text3);
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+        .status-dot.active { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+        .status-dot.green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-item { display: flex; align-items: center; gap: 7px; }
+        .status-label { color: var(--text3); }
+        .status-val { color: var(--text2); }
+        .status-sep { color: var(--border2); }
+
+        /* ── Image grid ─────────────────────────────────────────────────── */
+        .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 540px) { .img-grid { grid-template-columns: 1fr; } }
+
+        .ibox { background: var(--surf); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+        .ibox-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; background: var(--surf2); border-bottom: 1px solid var(--border);
+        }
+        .ibox-label { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; }
+        .badge { font-family: 'JetBrains Mono', monospace; font-size: .6rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; letter-spacing: .5px; }
+        .b-src    { background: rgba(79,142,255,.1);   color: var(--accent); border: 1px solid rgba(79,142,255,.2); }
+        .b-lpf    { background: rgba(0,212,255,.1);    color: var(--cyan);   border: 1px solid rgba(0,212,255,.2); }
+        .b-hpf    { background: rgba(255,77,106,.1);   color: var(--red);    border: 1px solid rgba(255,77,106,.2); }
+        .b-prev   { background: rgba(255,166,35,.1);   color: var(--amber);  border: 1px solid rgba(255,166,35,.2); }
+        .b-eq     { background: rgba(79,255,176,.1);   color: var(--green);  border: 1px solid rgba(79,255,176,.2); }
+        .b-hist   { background: rgba(167,139,250,.1);  color: var(--purple); border: 1px solid rgba(167,139,250,.2); }
+
+        .ibox-frame {
+            min-height: 220px; display: flex; align-items: center; justify-content: center;
+            padding: 16px; background-color: #090b12;
+            background-image: linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .ibox-frame img { max-width: 100%; max-height: 380px; border-radius: 4px; display: block; box-shadow: 0 8px 32px rgba(0,0,0,.7); }
+
+        /* ── Histogram section ──────────────────────────────────────────── */
+        .hist-panel {
+            background: var(--surf); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
+        }
+        .hist-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; background: var(--surf2); border-bottom: 1px solid var(--border);
+        }
+        .hist-panel-title {
+            font-family: 'JetBrains Mono', monospace; font-size: .65rem;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .hist-panel-title.orig { color: var(--green); }
+        .hist-panel-title.eq   { color: var(--purple); }
+        .hist-canvas-wrap { padding: 16px 16px 8px; }
+        canvas.hc { width: 100%; height: 200px; display: block; background: transparent; }
+
+        /* ── Toolbar ────────────────────────────────────────────────────── */
+        .toolbar { display: flex; align-items: center; justify-content: flex-end; }
+        .btn-save {
+            display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px;
+            border-radius: var(--r-sm); background: var(--surf); border: 1px solid var(--border2);
+            color: var(--text2); font-family: 'Figtree', sans-serif; font-size: .82rem;
+            font-weight: 600; cursor: pointer; text-decoration: none; transition: all .18s;
+        }
+        .btn-save svg { width: 14px; height: 14px; }
+        .btn-save:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,.05); }
+
+        /* ── Empty state ────────────────────────────────────────────────── */
+        .empty-state {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 360px; border: 1px solid var(--border); border-radius: var(--r);
+            background: var(--surf); flex-direction: column; gap: 14px;
+        }
+        .empty-icon { width: 56px; height: 56px; color: var(--text3); opacity: .4; }
+        .empty-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text2); }
+        .empty-sub { font-size: .82rem; color: var(--text3); text-align: center; max-width: 260px; line-height: 1.6; }
+
+        /* ── Error box ──────────────────────────────────────────────────── */
+        .err-box {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,77,106,.06); border: 1px solid rgba(255,77,106,.25);
+            border-radius: var(--r-sm); padding: 11px 15px;
+            color: var(--red); font-size: .83rem; margin-bottom: 12px;
+        }
+        .err-box svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ── Mode panel visibility ───────────────────────────────────────── */
+        .panel-filter  { display: block; }
+        .panel-hist    { display: none; }
+        body.mode-hist .panel-filter { display: none; }
+        body.mode-hist .panel-hist   { display: block; }
+        body.mode-hist .right-filter { display: none; }
+        body.mode-hist .right-hist   { display: flex; }
+        .right-filter { display: flex; flex-direction: column; gap: 16px; }
+        .right-hist   { display: none; flex-direction: column; gap: 16px; }
+
+        /* ── Animations ─────────────────────────────────────────────────── */
+        .block, .right > * { animation: fadeUp .35s ease both; }
+        .block:nth-child(2) { animation-delay: .06s; }
+        .right > *:nth-child(2) { animation-delay: .1s; }
+        .right > *:nth-child(3) { animation-delay: .16s; }
+        .right > *:nth-child(4) { animation-delay: .2s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Kernel size input ──────────────────────────────────────────── */
+        .kernel-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surf2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            padding: 11px 14px;
+            margin-bottom: 12px;
+        }
+        .kernel-row label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .68rem;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .kernel-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-left: auto;
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .kstep-btn {
+            width: 30px; height: 30px;
+            border: none;
+            background: var(--surf3);
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .15s, color .15s;
+            flex-shrink: 0;
+        }
+        .kstep-btn:hover { background: var(--border2); color: var(--accent); }
+        .kstep-btn:active { background: var(--accent-dim); }
+        #kernelSizeDisplay {
+            width: 38px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .85rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: var(--bg);
+            border: none;
+            border-left: 1px solid var(--border2);
+            border-right: 1px solid var(--border2);
+            padding: 0;
+            height: 30px;
+            line-height: 30px;
+            pointer-events: none;
+            user-select: none;
+        }
+        .kernel-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .62rem;
+            color: var(--text3);
+            margin-left: 6px;
+        }
+        /* Shake animation for validation error */
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%     { transform: translateX(-6px); }
+            40%     { transform: translateX(6px); }
+            60%     { transform: translateX(-4px); }
+            80%     { transform: translateX(4px); }
+        }
+        .shake { animation: shake .4s ease; }
+
+        /* ── Special Filter Controls ────────────────────────────────────── */
+        .roberts-note, .canny-controls { display: none; }
+        .roberts-note.show { display: block; font-size: 0.8rem; color: var(--amber); margin-bottom: 12px; background: rgba(255,166,35,.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,166,35,.2); }
+        .canny-controls.show { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; background: var(--surf2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px; }
+        .canny-title { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+        .canny-row { display: flex; align-items: center; gap: 10px; }
+        .canny-row label { font-size: 0.75rem; color: var(--text2); width: 30px; }
+        .canny-row input[type=range] { flex: 1; }
+        .canny-val { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent); width: 24px; text-align: right; }
+        .kernel-row.hidden { opacity: 0.4; pointer-events: none; }
+
+        /* ── Category Switcher ──────────────────────────────────────────── */
+        .cat-switch { display: flex; background: var(--surf3); border-radius: var(--r-sm); padding: 4px; margin-bottom: 16px; gap: 4px; }
+        .cat-btn { flex: 1; padding: 8px; border: none; background: transparent; color: var(--text2); font-family: 'Figtree', sans-serif; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .cat-btn.active { background: var(--surf); color: var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.2); border: 1px solid var(--border); }
+        .op-section { display: none; }
+        .op-section.show { display: block; }
+</style>
+</head>
+<body class="{% if mode == 'histogram' %}mode-hist{% endif %}">
+
+<!-- ── Topbar ──────────────────────────────────────────────────────────────── -->
+<nav class="topbar">
+    <div class="topbar-brand">
+        <div class="brand-mark"></div>
+        <span class="brand-name">Vision<span>Lab</span></span>
+    </div>
+
+    <!-- Mode switcher -->
+    <div class="mode-switch">
+        <form method="POST" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="switch_mode"/>
+            <input type="hidden" name="mode"   value="filter"/>
+            <button type="submit" class="mode-btn {% if mode == 'filter' %}active-filter{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filter
+            </button>
+        </form>
+        <form method="POST" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="switch_mode"/>
+            <input type="hidden" name="mode"   value="histogram"/>
+            <button type="submit" class="mode-btn {% if mode == 'histogram' %}active-hist{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Histogram
+            </button>
+        </form>
+    </div>
+
+    <span class="topbar-meta">COMPUTER VISION · CV LAB</span>
+</nav>
+
+<!-- ── Error ───────────────────────────────────────────────────────────────── -->
+{% if error %}
+<div style="max-width:1260px;margin:16px auto 0;padding:0 24px">
+    <div class="err-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        {{ error }}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Page ────────────────────────────────────────────────────────────────── -->
+<div class="page">
+
+    <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
+    <aside class="sidebar">
+
+        <!-- Upload (shared by both modes) -->
+        <div class="block">
+            <div class="block-header">
+                <svg class="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span class="block-title">Upload Image</span>
+            </div>
+            <div class="block-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="upload"/>
+                    <div class="drop-zone">
+                        <input type="file" name="myfile" id="finput" accept="image/*" required/>
+                        <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p class="dz-label"><strong>Click to browse</strong> or drag &amp; drop</p>
+                        <p class="dz-formats">PNG &nbsp;·&nbsp; JPG &nbsp;·&nbsp; WEBP</p>
+                        <div id="fname"></div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                        Upload
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ─── FILTER MODE CONTROLS ───────────────────────────────────── -->
+        <div class="panel-filter">
+            <div class="block">
+                <div class="block-header">
+                    <svg class="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    <span class="block-title">Apply Filter</span>
+                </div>
+                <div class="block-body">
+                    <div class="cat-switch">
+                        <button type="button" class="cat-btn active" id="btn-cat-filters" onclick="setCategory('filters')">Filters</button>
+                        <button type="button" class="cat-btn" id="btn-cat-noise" onclick="setCategory('noise')">Noise</button>
+                    </div>
+
+                    <div id="sec-filters" class="op-section show">
+                        <div class="tabs">
+                            <button type="button" class="tab on" id="t-lpf" onclick="switchTab('lpf')">Low-Pass</button>
+                            <button type="button" class="tab"    id="t-hpf" onclick="switchTab('hpf')">High-Pass</button>
+                        </div>
+
+                        <div class="fgroup lpf show" id="g-lpf">
+                            <div class="fcard" id="c-box" onclick="pick('box')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Box Filter</span><span class="fcard-kernel">K = 1/9 × ones(3,3)</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-gaussian" onclick="pick('gaussian')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12 Q6 4 12 4 Q18 4 22 12 Q18 20 12 20 Q6 20 2 12Z"/><circle cx="12" cy="12" r="2"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Gaussian Filter</span><span class="fcard-kernel">Binomial outer product</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                        </div>
+
+                        <div class="fgroup hpf" id="g-hpf">
+                            <div class="fcard" id="c-sobel" onclick="pick('sobel')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Sobel Filter</span><span class="fcard-kernel">Generalised Sobel, k×k</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-prewitt" onclick="pick('prewitt')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Prewitt Filter</span><span class="fcard-kernel">Generalised Prewitt, k×k</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-roberts" onclick="pick('roberts')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="19" x2="19" y2="5"/><line x1="5" y1="5" x2="19" y2="19"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Roberts Cross</span><span class="fcard-kernel">Fixed 2×2 (OpenCV)</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-canny" onclick="pick('canny')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12 Q4 4 8 4 Q12 4 12 12 Q12 20 16 20 Q20 20 22 12"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Canny Detector</span><span class="fcard-kernel">Gaussian+NMS (OpenCV)</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sec-noise" class="op-section">
+                        <div class="fgroup noise show" id="g-noise">
+                            <div class="fcard" id="c-uniform_noise" onclick="pick('uniform_noise')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Uniform Noise</span><span class="fcard-kernel">cv2.randu</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-gaussian_noise" onclick="pick('gaussian_noise')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Gaussian Noise</span><span class="fcard-kernel">cv2.randn</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                            <div class="fcard" id="c-salt_pepper_noise" onclick="pick('salt_pepper_noise')">
+                                <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"/></svg></div>
+                                <div class="fcard-info"><span class="fcard-name">Salt & Pepper</span><span class="fcard-kernel">Probability Matrix</span></div>
+                                <div class="sel-indicator"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fgroup hpf" id="g-hpf">
+                        <div class="fcard" id="c-sobel" onclick="pick('sobel')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Sobel Filter</span><span class="fcard-kernel">Generalised Sobel, size k×k</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fcard" id="c-prewitt" onclick="pick('prewitt')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Prewitt Filter</span><span class="fcard-kernel">Generalised Prewitt, size k×k</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fcard" id="c-roberts" onclick="pick('roberts')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="19" x2="19" y2="5"/><line x1="5" y1="5" x2="19" y2="19"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Roberts Cross</span><span class="fcard-kernel">Fixed 2×2 diagonal kernels (OpenCV)</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fcard" id="c-canny" onclick="pick('canny')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12 Q4 4 8 4 Q12 4 12 12 Q12 20 16 20 Q20 20 22 12"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Canny Detector</span><span class="fcard-kernel">Gaussian + NMS + hysteresis (OpenCV)</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fgroup noise" id="g-noise">
+                        <div class="fcard" id="c-uniform_noise" onclick="pick('uniform_noise')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Uniform Noise</span><span class="fcard-kernel">cv2.randu</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fcard" id="c-gaussian_noise" onclick="pick('gaussian_noise')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Gaussian Noise</span><span class="fcard-kernel">cv2.randn</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                        <div class="fcard" id="c-salt_pepper_noise" onclick="pick('salt_pepper_noise')">
+                            <div class="fcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"/></svg></div>
+                            <div class="fcard-info"><span class="fcard-name">Salt & Pepper</span><span class="fcard-kernel">Probability Matrix</span></div>
+                            <div class="sel-indicator"></div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Roberts note (shown only when roberts selected) -->
+                    <div class="roberts-note" id="robertsNote">
+                        ⚡ Roberts uses fixed 2×2 kernels — kernel size is ignored
+                    </div>
+
+                    <!-- Kernel Size Control -->
+                    <div class="kernel-row" id="kernelRow">
+                        <label>Kernel Size</label>
+                        <div class="kernel-stepper" id="kernelStepper">
+                            <button type="button" class="kstep-btn" id="kDecBtn" onclick="stepKernel(-2)" title="Decrease size">&#8722;</button>
+                            <div id="kernelSizeDisplay">{{ kernel_size }}</div>
+                            <button type="button" class="kstep-btn" id="kIncBtn" onclick="stepKernel(+2)" title="Increase size">&#43;</button>
+                        </div>
+                        <span class="kernel-tag" id="kernelTag">{{ kernel_size }}×{{ kernel_size }}</span>
+                    </div>
+
+                    <!-- Canny threshold controls (shown only when canny selected) -->
+                    <div class="canny-controls" id="cannyControls">
+                        <div class="canny-title">Hysteresis Thresholds</div>
+                        <div class="canny-row">
+                            <label>Low</label>
+                            <input type="range" id="cannyLowSlider" min="0" max="254" value="{{ canny_low }}"
+                                   oninput="updateCanny()"/>
+                            <span class="canny-val" id="cannyLowVal">{{ canny_low }}</span>
+                        </div>
+                        <div class="canny-row">
+                            <label>High</label>
+                            <input type="range" id="cannyHighSlider" min="1" max="255" value="{{ canny_high }}"
+                                   oninput="updateCanny()"/>
+                            <span class="canny-val" id="cannyHighVal">{{ canny_high }}</span>
+                        </div>
+                    </div>
+
+                    <form method="POST" onsubmit="return doApply(this)">
+                        {% csrf_token %}
+                        <input type="hidden" name="action"      value="apply_filter"/>
+                        <input type="hidden" name="filter_name" id="hfilter"     value=""/>
+                        <input type="hidden" name="kernel_size" id="hkernelsize" value="{{ kernel_size }}"/>
+                        <input type="hidden" name="canny_low"   id="hcannylow"   value="{{ canny_low }}"/>
+                        <input type="hidden" name="canny_high"  id="hcannyhigh"  value="{{ canny_high }}"/>
+                        <button class="btn btn-primary" type="submit" {% if not current_url %}disabled{% endif %}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                            Apply Filter
+                        </button>
+                    </form>
+
+                    <div class="act-row">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="undo"/>
+                            <button class="btn btn-secondary" type="submit" {% if not can_undo %}disabled{% endif %}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                                Undo
+                            </button>
+                        </form>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="reset"/>
+                            <button class="btn btn-outline-red" type="submit" {% if not current_url %}disabled{% endif %}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.36"/></svg>
+                                Reset
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /panel-filter -->
+
+        <!-- ─── HISTOGRAM MODE CONTROLS ───────────────────────────────── -->
+        <div class="panel-hist">
+            <div class="block">
+                <div class="block-header">
+                    <svg class="block-header-icon green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                    <span class="block-title">Histogram Tools</span>
+                </div>
+                <div class="block-body">
+
+                    <!-- Info card -->
+                    <div style="background:var(--surf2);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:6px;padding:12px 14px;margin-bottom:14px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--green);letter-spacing:1px;margin-bottom:6px;">FORMULA</div>
+                        <div style="font-size:.8rem;color:var(--text2);line-height:1.6;">
+                            f(i) = ⌊ CDF(i) / n &times; (L&minus;1) ⌋
+                        </div>
+                        <div style="font-size:.73rem;color:var(--text3);margin-top:6px;line-height:1.5;">
+                            Redistributes pixel intensities across the full [0,255] range.
+                        </div>
+                    </div>
+
+                    <!-- Draw histogram -->
+                    <form method="POST" style="margin-bottom:10px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="draw_histogram"/>
+                        <button class="btn btn-purple" type="submit" {% if not has_image %}disabled{% endif %}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="11"/><rect x="10" y="6" width="4" height="15"/><rect x="17" y="3" width="4" height="18"/></svg>
+                            Draw Histogram
+                        </button>
+                    </form>
+
+                    <!-- Equalize -->
+                    <form method="POST" style="margin-bottom:10px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="equalize"/>
+                        <button class="btn btn-green" type="submit" {% if not has_image %}disabled{% endif %}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                            Equalize Contrast
+                        </button>
+                    </form>
+
+                    <!-- Reset -->
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reset"/>
+                        <button class="btn btn-outline-red" type="submit" {% if not has_image %}disabled{% endif %}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.36"/></svg>
+                            Reset
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div><!-- /panel-hist -->
+
+    </aside>
+
+    <!-- ═══ MAIN CONTENT ═══════════════════════════════════════════════════ -->
+    <section class="right">
+
+        <!-- ─── FILTER MODE RIGHT ───────────────────────────────────────── -->
+        <div class="right-filter">
+        {% if current_url %}
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot active"></div>
+                    <span class="status-label">STATUS</span>
+                    <span class="status-val">Image loaded</span>
+                </div>
+                <span class="status-sep">/</span>
+                <div class="status-item">
+                    <span class="status-label">FILTER</span>
+                    <span class="status-val">{% if filter_name %}{{ filter_name|upper }}{% else %}NONE{% endif %}</span>
+                </div>
+                <span class="status-sep">/</span>
+                <div class="status-item">
+                    <span class="status-label">HISTORY</span>
+                    <span class="status-val">{{ request.session.img_history|length }} step{{ request.session.img_history|length|pluralize }}</span>
+                </div>
+            </div>
+
+            <div class="img-grid">
+                <div class="ibox">
+                    <div class="ibox-head">
+                        <span class="ibox-label">Source</span>
+                        <span class="badge b-src">ORIGINAL</span>
+                    </div>
+                    <div class="ibox-frame">
+                        <img src="{{ original_url|default:current_url }}" alt="Original"/>
+                    </div>
+                </div>
+                <div class="ibox">
+                    <div class="ibox-head">
+                        <span class="ibox-label">Output</span>
+                        {% if filter_name == 'box' or filter_name == 'gaussian' %}
+                            <span class="badge b-lpf">LPF &middot; {{ filter_name|upper }}</span>
+                        {% elif filter_name %}
+                            <span class="badge b-hpf">HPF &middot; {{ filter_name|upper }}</span>
+                        {% else %}
+                            <span class="badge b-prev">PREVIEW</span>
+                        {% endif %}
+                    </div>
+                    <div class="ibox-frame">
+                        <img src="{{ current_url }}" alt="Filtered"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <a class="btn-save" href="{{ current_url }}" download>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Save Current Image
+                </a>
+            </div>
+
+        {% else %}
+            <div class="empty-state">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p class="empty-title">No image loaded</p>
+                <p class="empty-sub">Upload an image using the panel on the left to begin applying filters.</p>
+            </div>
+        {% endif %}
+        </div><!-- /right-filter -->
+
+        <!-- ─── HISTOGRAM MODE RIGHT ────────────────────────────────────── -->
+        <div class="right-hist">
+        {% if has_image %}
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot green"></div>
+                    <span class="status-label">MODE</span>
+                    <span class="status-val">Histogram Equalization</span>
+                </div>
+                <span class="status-sep">/</span>
+                <div class="status-item">
+                    <span class="status-label">STATUS</span>
+                    <span class="status-val">
+                        {% if hist_eq_url %}Equalized{% elif hist_orig_json != 'null' %}Histogram drawn{% else %}Image ready{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Images row -->
+            <div class="img-grid">
+                <div class="ibox">
+                    <div class="ibox-head">
+                        <span class="ibox-label">Original</span>
+                        <span class="badge b-src">INPUT</span>
+                    </div>
+                    <div class="ibox-frame">
+                        <img src="{{ original_url }}" alt="Original"/>
+                    </div>
+                </div>
+                <div class="ibox">
+                    <div class="ibox-head">
+                        <span class="ibox-label">Equalized</span>
+                        <span class="badge b-eq">OUTPUT</span>
+                    </div>
+                    <div class="ibox-frame">
+                        {% if hist_eq_url %}
+                            <img src="{{ hist_eq_url }}" alt="Equalized"/>
+                        {% else %}
+                            <div style="text-align:center;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:.72rem;">[ run equalization ]</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Original histogram -->
+            {% if hist_orig_json != 'null' %}
+            <div class="hist-panel">
+                <div class="hist-panel-header">
+                    <span class="hist-panel-title orig">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="11"/><rect x="10" y="6" width="4" height="15"/><rect x="17" y="3" width="4" height="18"/></svg>
+                        Original Histogram
+                    </span>
+                    <span class="badge b-hist">GREY LEVEL DISTRIBUTION</span>
+                </div>
+                <div class="hist-canvas-wrap">
+                    <canvas class="hc" id="origHistCanvas" width="1000" height="200"></canvas>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Equalized histogram -->
+            {% if hist_eq_json != 'null' %}
+            <div class="hist-panel">
+                <div class="hist-panel-header">
+                    <span class="hist-panel-title eq">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                        Equalized Histogram
+                    </span>
+                    <span class="badge b-eq">AFTER EQUALIZATION</span>
+                </div>
+                <div class="hist-canvas-wrap">
+                    <canvas class="hc" id="eqHistCanvas" width="1000" height="200"></canvas>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <a class="btn-save" href="{{ hist_eq_url }}" download>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Save Equalized Image
+                </a>
+            </div>
+            {% endif %}
+
+        {% else %}
+            <div class="empty-state">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <p class="empty-title">No image loaded</p>
+                <p class="empty-sub">Upload an image first, then draw its histogram or equalize contrast.</p>
+            </div>
+        {% endif %}
+        </div><!-- /right-hist -->
+
+    </section>
+</div><!-- /page -->
+
+<script>
+// ── File name preview ──────────────────────────────────────────────────────
+document.getElementById('finput').addEventListener('change', function() {
+    document.getElementById('fname').textContent = this.files[0]?.name ?? '';
+});
+
+// ── Filter selection ───────────────────────────────────────────────────────
+let chosen = '';
+function pick(name) {
+    document.querySelectorAll('.fcard').forEach(c => c.classList.remove('sel'));
+    const el = document.getElementById('c-' + name);
+    if (el) el.classList.add('sel');
+    chosen = name;
+    document.getElementById('hfilter').value = name;
+
+    // Show/hide Roberts note
+    const robertsNote = document.getElementById('robertsNote');
+    robertsNote.classList.toggle('show', name === 'roberts');
+
+    // Dim kernel stepper for roberts (fixed 2×2)
+    const kernelRow = document.getElementById('kernelRow');
+    kernelRow.classList.toggle('hidden', name === 'roberts');
+
+    // Show Canny threshold controls only for canny
+    const cannyControls = document.getElementById('cannyControls');
+    cannyControls.classList.toggle('show', name === 'canny');
+}
+
+function updateCanny() {
+    const low  = parseInt(document.getElementById('cannyLowSlider').value);
+    let   high = parseInt(document.getElementById('cannyHighSlider').value);
+
+    // Enforce low < high
+    if (low >= high) {
+        high = Math.min(low + 1, 255);
+        document.getElementById('cannyHighSlider').value = high;
+    }
+
+    document.getElementById('cannyLowVal').textContent  = low;
+    document.getElementById('cannyHighVal').textContent = high;
+    document.getElementById('hcannylow').value          = low;
+    document.getElementById('hcannyhigh').value         = high;
+}
+// ── Category Switching ─────────────────────────────────────────────────────
+function setCategory(cat) {
+    // Update button styles
+    document.getElementById('btn-cat-filters').classList.toggle('active', cat === 'filters');
+    document.getElementById('btn-cat-noise').classList.toggle('active', cat === 'noise');
+    
+    // Show/hide sections
+    document.getElementById('sec-filters').classList.toggle('show', cat === 'filters');
+    document.getElementById('sec-noise').classList.toggle('show', cat === 'noise');
+    
+    // Show/hide kernel size controls (we don't need them for noise)
+    const kernelRow = document.getElementById('kernelRow');
+    if (kernelRow) kernelRow.style.display = (cat === 'filters') ? 'flex' : 'none';
+
+    // Clear currently selected operation when switching categories
+    document.querySelectorAll('.fcard').forEach(c => c.classList.remove('sel'));
+    chosen = '';
+    document.getElementById('hfilter').value = '';
+    
+    // Hide special controls
+    const robertsNote = document.getElementById('robertsNote');
+    const cannyControls = document.getElementById('cannyControls');
+    if(robertsNote) robertsNote.classList.remove('show');
+    if(cannyControls) cannyControls.classList.remove('show');
+}
+
+// ── Tab Switching (For Filters Only) ───────────────────────────────────────
+function switchTab(type) {
+    ['lpf', 'hpf'].forEach(t => {
+        const tabBtn = document.getElementById('t-' + t);
+        const groupDiv = document.getElementById('g-' + t);
+        if (tabBtn) tabBtn.classList.toggle('on', t === type);
+        if (groupDiv) groupDiv.classList.toggle('show', t === type);
+    });
+
+    const activeGroup = document.getElementById('g-' + type);
+    if (chosen && !activeGroup.querySelector('#c-' + chosen)) {
+        document.querySelectorAll('.fcard').forEach(c => c.classList.remove('sel'));
+        chosen = '';
+        document.getElementById('hfilter').value = '';
+        
+        const robertsNote = document.getElementById('robertsNote');
+        const cannyControls = document.getElementById('cannyControls');
+        const kernelRow = document.getElementById('kernelRow');
+        
+        if(robertsNote) robertsNote.classList.remove('show');
+        if(cannyControls) cannyControls.classList.remove('show');
+        if(kernelRow) kernelRow.classList.remove('hidden');
+    }
+}
+function doApply(form) {
+    if (!chosen) {
+        const panel = document.getElementById('g-' + (document.getElementById('t-lpf').classList.contains('on') ? 'lpf' : 'hpf'));
+        panel.style.outline = '1px solid rgba(255,77,106,.5)';
+        panel.style.borderRadius = '6px';
+        setTimeout(() => { panel.style.outline = ''; }, 1200);
+        return false;
+    }
+    form.querySelector('#hfilter').value = chosen;
+    return true;
+}
+// Restore last filter selection on reload
+(function() {
+    const last = "{{ filter_name }}";
+    if (!last) return;
+    if (last === 'sobel' || last === 'prewitt') switchTab('hpf');
+    pick(last);
+})();
+
+// ── Histogram canvas drawing ───────────────────────────────────────────────
+function drawHistogram(canvasId, histData, color1, color2) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !histData) return;
+    const c   = canvas.getContext('2d');
+    const W   = canvas.width;
+    const H   = canvas.height;
+    const ML  = 64, MR = 14, MT = 14, MB = 38;
+    const pW  = W - ML - MR;
+    const pH  = H - MT - MB;
+
+    c.clearRect(0, 0, W, H);
+
+    const max = Math.max(...histData);
+    const barW = pW / 256;
+
+    // Horizontal grid lines + Y-axis labels
+    const yTicks = 5;
+    c.font = '11px "JetBrains Mono", monospace';
+    c.textAlign = 'right';
+    for (let t = 0; t <= yTicks; t++) {
+        const val = Math.round((t / yTicks) * max);
+        const y   = MT + pH - (t / yTicks) * pH;
+        // grid line
+        c.strokeStyle = 'rgba(255,255,255,0.06)';
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(ML, y); c.lineTo(ML + pW, y); c.stroke();
+        // label
+        c.fillStyle = '#4a5278';
+        c.fillText(val.toLocaleString(), ML - 8, y + 4);
+    }
+
+    // Bars with gradient
+    const grad = c.createLinearGradient(ML, 0, ML + pW, 0);
+    grad.addColorStop(0, color1);
+    grad.addColorStop(1, color2);
+    c.fillStyle = grad;
+    for (let i = 0; i < 256; i++) {
+        const barH = (histData[i] / max) * pH;
+        if (barH > 0)
+            c.fillRect(ML + i * barW, MT + pH - barH, Math.max(barW, 1.5), barH);
+    }
+
+    // X-axis ticks + labels
+    c.textAlign = 'center';
+    c.fillStyle = '#4a5278';
+    const xLabels = [0, 32, 64, 96, 128, 160, 192, 224, 255];
+    xLabels.forEach(v => {
+        const x = ML + (v / 255) * pW;
+        c.strokeStyle = 'rgba(255,255,255,0.15)';
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(x, MT + pH); c.lineTo(x, MT + pH + 5); c.stroke();
+        c.fillStyle = '#4a5278';
+        c.fillText(v, x, MT + pH + 20);
+    });
+
+    // Axis border lines
+    c.strokeStyle = 'rgba(255,255,255,0.18)';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(ML, MT); c.lineTo(ML, MT + pH); c.lineTo(ML + pW, MT + pH);
+    c.stroke();
+
+    // Axis labels
+    c.fillStyle = '#6e6e8a';
+    c.font = '11px "JetBrains Mono", monospace';
+    c.textAlign = 'center';
+    c.fillText('Grey Level  (0 – 255)', ML + pW / 2, H - 4);
+    c.save();
+    c.translate(14, MT + pH / 2);
+    c.rotate(-Math.PI / 2);
+    c.fillText('Pixel Count', 0, 0);
+    c.restore();
+}
+
+// Inject histogram data from Django context and draw
+const origData = {{ hist_orig_json }};
+const eqData   = {{ hist_eq_json }};
+
+if (origData) drawHistogram('origHistCanvas', origData, '#4fffb0', '#00b4d8');
+if (eqData)   drawHistogram('eqHistCanvas',   eqData,   '#a78bfa', '#f472b6');
+
+// ── Kernel size stepper ────────────────────────────────────────────────────
+const MIN_K = 3, MAX_K = 21;
+let kernelVal = parseInt(document.getElementById('kernelSizeDisplay').textContent) || 3;
+
+function stepKernel(delta) {
+    const next = kernelVal + delta;
+    if (next < MIN_K || next > MAX_K) {
+        // Shake the stepper to signal limit reached
+        const s = document.getElementById('kernelStepper');
+        s.classList.remove('shake');
+        void s.offsetWidth;          // reflow to restart animation
+        s.classList.add('shake');
+        return;
+    }
+    kernelVal = next;
+    updateKernelUI();
+}
+
+function updateKernelUI() {
+    document.getElementById('kernelSizeDisplay').textContent = kernelVal;
+    document.getElementById('kernelTag').textContent = kernelVal + '×' + kernelVal;
+    document.getElementById('hkernelsize').value = kernelVal;
+    document.getElementById('kDecBtn').disabled = (kernelVal <= MIN_K);
+    document.getElementById('kIncBtn').disabled = (kernelVal >= MAX_K);
+}
+
+// Initialise button states on load
+updateKernelUI();
+
+</script>
+
+</body>
+</html>
