@@ -12,4 +12,7 @@ urlpatterns = [
     path("api/histogram/",      views.DrawHistogramView.as_view(), name="api-histogram"),
     path("api/equalize/",       views.EqualizeView.as_view(),      name="api-equalize"),
     path("api/switch-mode/",    views.SwitchModeView.as_view(),    name="api-switch-mode"),
+    path("api/hybrid-low/",     views.HybridLowUploadView.as_view(),  name="api-hybrid-low"),
+    path("api/hybrid-high/",    views.HybridHighUploadView.as_view(), name="api-hybrid-high"),
+    path("api/hybrid-mix/",     views.HybridMixView.as_view(),        name="api-hybrid-mix"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

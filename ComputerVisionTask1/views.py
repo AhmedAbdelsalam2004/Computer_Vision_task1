@@ -322,6 +322,10 @@ class SessionManager:
         "canny_low": 50,
         "canny_high": 150,
         "noise_amount": 5,
+        # Hybrid image defaults
+        "hybrid_low_url": None,
+        "hybrid_high_url": None,
+        "hybrid_out_url": None,
     }
 
     @classmethod
@@ -344,6 +348,9 @@ class SessionManager:
             "hist_orig_data": session.get("hist_orig_data"),
             "hist_eq_data": session.get("hist_eq_data"),
             "hist_eq_url": session.get("hist_eq_url"),
+            "hybrid_low_url": session.get("hybrid_low_url"),
+            "hybrid_high_url": session.get("hybrid_high_url"),
+            "hybrid_out_url": session.get("hybrid_out_url"),
         }
 
     @staticmethod
@@ -621,6 +628,114 @@ class EqualizeView(APIView):
             })
         except Exception as e:
             return Response({"error": f"Equalization failed: {e}"}, status=500)
+
+
+class HybridLowUploadView(APIView):
+    """POST /api/hybrid-low/ — Upload first image and apply low-pass (Box, 5×5)."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        SessionManager.init_session(request.session)
+        f = request.FILES.get("img_low")
+        if not f:
+            return Response({"error": "No file provided for low-pass image."}, status=400)
+
+        try:
+            pil_img = Image.open(f).convert("RGB")
+            arr = np.array(pil_img)
+            filtered_arr = FilterProcessor.apply_filter(
+                arr, "box", kernel_size=5, canny_low=50, canny_high=150, noise_amount=5
+            )
+            filtered_pil = Image.fromarray(filtered_arr)
+            low_url = ImageStorage.save_image(filtered_pil, prefix="hybrid_low")
+        except Exception as e:
+            return Response({"error": f"Hybrid low-pass failed: {e}"}, status=500)
+
+        state = SessionManager.get_state(request.session)
+        state["hybrid_low_url"] = low_url
+        # Clear previous mixed output when changing inputs
+        state["hybrid_out_url"] = None
+        SessionManager.save_state(request.session, state)
+
+        return Response({
+            "hybrid_low_url": low_url,
+            "hybrid_out_url": None,
+        })
+
+
+class HybridHighUploadView(APIView):
+    """POST /api/hybrid-high/ — Upload second image and apply high-pass (Sobel, 5×5)."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        SessionManager.init_session(request.session)
+        f = request.FILES.get("img_high")
+        if not f:
+            return Response({"error": "No file provided for high-pass image."}, status=400)
+
+        try:
+            pil_img = Image.open(f).convert("RGB")
+            arr = np.array(pil_img)
+            filtered_arr = FilterProcessor.apply_filter(
+                arr, "sobel", kernel_size=5, canny_low=50, canny_high=150, noise_amount=5
+            )
+            filtered_pil = Image.fromarray(filtered_arr)
+            high_url = ImageStorage.save_image(filtered_pil, prefix="hybrid_high")
+        except Exception as e:
+            return Response({"error": f"Hybrid high-pass failed: {e}"}, status=500)
+
+        state = SessionManager.get_state(request.session)
+        state["hybrid_high_url"] = high_url
+        # Clear previous mixed output when changing inputs
+        state["hybrid_out_url"] = None
+        SessionManager.save_state(request.session, state)
+
+        return Response({
+            "hybrid_high_url": high_url,
+            "hybrid_out_url": None,
+        })
+
+
+class HybridMixView(APIView):
+    """POST /api/hybrid-mix/ — Combine low-pass and high-pass images into a hybrid image."""
+
+    def post(self, request):
+        SessionManager.init_session(request.session)
+        state = SessionManager.get_state(request.session)
+        low_url = state.get("hybrid_low_url")
+        high_url = state.get("hybrid_high_url")
+
+        if not low_url or not high_url:
+            return Response({"error": "Please upload both images before mixing."}, status=400)
+
+        try:
+            low_arr = np.array(
+                Image.open(ImageStorage.url_to_filepath(low_url)).convert("RGB")
+            ).astype(np.float32)
+            high_arr = np.array(
+                Image.open(ImageStorage.url_to_filepath(high_url)).convert("RGB")
+            ).astype(np.float32)
+
+            # Ensure both images have the same size
+            if low_arr.shape != high_arr.shape:
+                h, w = low_arr.shape[:2]
+                high_pil_resized = Image.fromarray(high_arr.astype(np.uint8)).resize((w, h))
+                high_arr = np.array(high_pil_resized).astype(np.float32)
+
+            hybrid_arr = np.clip(low_arr + high_arr, 0, 255).astype(np.uint8)
+            hybrid_pil = Image.fromarray(hybrid_arr)
+            hybrid_url = ImageStorage.save_image(hybrid_pil, prefix="hybrid_mix")
+        except Exception as e:
+            return Response({"error": f"Hybrid mix failed: {e}"}, status=500)
+
+        state["hybrid_out_url"] = hybrid_url
+        SessionManager.save_state(request.session, state)
+
+        return Response({
+            "hybrid_out_url": hybrid_url,
+        })
 
 
 class SwitchModeView(APIView):

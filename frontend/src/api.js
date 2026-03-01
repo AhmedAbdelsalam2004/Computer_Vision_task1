@@ -19,6 +19,21 @@ export const api = {
     return request("/api/upload/", { method: "POST", body: form });
   },
 
+  hybridUploadLow: (file) => {
+    const form = new FormData();
+    form.append("img_low", file);
+    return request("/api/hybrid-low/", { method: "POST", body: form });
+  },
+
+  hybridUploadHigh: (file) => {
+    const form = new FormData();
+    form.append("img_high", file);
+    return request("/api/hybrid-high/", { method: "POST", body: form });
+  },
+
+  hybridMix: () =>
+    request("/api/hybrid-mix/", { method: "POST" }),
+
   applyFilter: (payload) =>
     request("/api/apply-filter/", {
       method: "POST",

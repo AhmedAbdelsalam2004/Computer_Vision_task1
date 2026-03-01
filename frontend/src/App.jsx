@@ -19,6 +19,9 @@ const EMPTY_STATE = {
   hist_eq_data: null,
   hist_eq_url: null,
   history_length: 0,
+  hybrid_low_url: null,
+  hybrid_high_url: null,
+  hybrid_out_url: null,
 };
 
 export default function App() {
@@ -37,6 +40,14 @@ export default function App() {
   const [noiseAmount, setNoiseAmount] = useState(5);
   const [category, setCategory] = useState("filters");
   const [tab, setTab] = useState("lpf");
+
+  // Hybrid image local state
+  const hybridLowInputRef = useRef(null);
+  const hybridHighInputRef = useRef(null);
+  const [hybridLowFile, setHybridLowFile] = useState(null);
+  const [hybridHighFile, setHybridHighFile] = useState(null);
+  const [hybridLowName, setHybridLowName] = useState("");
+  const [hybridHighName, setHybridHighName] = useState("");
 
   const fetchState = useCallback(async () => {
     try {
@@ -105,7 +116,42 @@ export default function App() {
   const handleSwitchMode = (mode) =>
     withLoading(() => api.switchMode(mode).then(() => ({ mode })));
 
+  // Hybrid handlers
+  const handleHybridLowSelect = (file) => {
+    if (!file) return;
+    setHybridLowFile(file);
+    setHybridLowName(file.name);
+  };
+
+  const handleHybridHighSelect = (file) => {
+    if (!file) return;
+    setHybridHighFile(file);
+    setHybridHighName(file.name);
+  };
+
+  const handleHybridLowUpload = async () => {
+    const file = hybridLowFile || hybridLowInputRef.current?.files?.[0];
+    if (!file) {
+      setError("Please select the first image for hybrid (low-pass).");
+      return;
+    }
+    await withLoading(() => api.hybridUploadLow(file));
+  };
+
+  const handleHybridHighUpload = async () => {
+    const file = hybridHighFile || hybridHighInputRef.current?.files?.[0];
+    if (!file) {
+      setError("Please select the second image for hybrid (high-pass).");
+      return;
+    }
+    await withLoading(() => api.hybridUploadHigh(file));
+  };
+
+  const handleHybridMix = () =>
+    withLoading(api.hybridMix);
+
   const isHistMode = state.mode === "histogram";
+  const isHybridMode = state.mode === "hybrid";
 
   return (
     <div className={`app-root ${isHistMode ? "mode-hist" : ""}`}>
@@ -118,7 +164,7 @@ export default function App() {
 
         <div className="mode-switch">
           <button
-            className={`mode-btn ${!isHistMode ? "active-filter" : ""}`}
+            className={`mode-btn ${state.mode === "filter" ? "active-filter" : ""}`}
             onClick={() => handleSwitchMode("filter")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
@@ -130,6 +176,13 @@ export default function App() {
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
             Histogram
+          </button>
+          <button
+            className={`mode-btn ${isHybridMode ? "active-hybrid" : ""}`}
+            onClick={() => handleSwitchMode("hybrid")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 20L10 4l4 16 6-10" /></svg>
+            Hybrid Image
           </button>
         </div>
 
@@ -151,63 +204,65 @@ export default function App() {
         {/* ── Sidebar ─────────────────────────────────────────── */}
         <aside className="sidebar">
 
-          {/* Upload Block */}
-          <div className="block">
-            <div className="block-header">
-              <svg className="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span className="block-title">Upload Image</span>
-            </div>
-            <div className="block-body">
-              <div
-                className={`drop-zone ${selectedFile ? "has-file" : ""}`}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
-                onDragLeave={e => e.currentTarget.classList.remove("drag")}
-                onDrop={e => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove("drag");
-                  const file = e.dataTransfer.files[0];
-                  if (file) handleFileSelect(file);
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={e => handleFileSelect(e.target.files[0])}
-                />
-                <svg className="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+          {/* Upload Block (hidden in Hybrid mode) */}
+          {!isHybridMode && (
+            <div className="block">
+              <div className="block-header">
+                <svg className="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
-                {selectedFile ? (
-                  <>
-                    <p className="dz-label" style={{ color: "var(--cyan)" }}><strong>✓ Ready to upload</strong></p>
-                    <div id="fname">{fileName}</div>
-                    <p className="dz-formats" style={{ marginTop: 4 }}>Click to change file</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="dz-label"><strong>Click to browse</strong> or drag &amp; drop</p>
-                    <p className="dz-formats">PNG &nbsp;·&nbsp; JPG &nbsp;·&nbsp; WEBP</p>
-                  </>
-                )}
+                <span className="block-title">Upload Image</span>
               </div>
-              <button
-                className={`btn btn-primary ${loading ? "loading" : ""}`}
-                onClick={handleUpload}
-                disabled={loading}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg>
-                Upload
-              </button>
+              <div className="block-body">
+                <div
+                  className={`drop-zone ${selectedFile ? "has-file" : ""}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
+                  onDragLeave={e => e.currentTarget.classList.remove("drag")}
+                  onDrop={e => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("drag");
+                    const file = e.dataTransfer.files[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => handleFileSelect(e.target.files[0])}
+                  />
+                  <svg className="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  {selectedFile ? (
+                    <>
+                      <p className="dz-label" style={{ color: "var(--cyan)" }}><strong>✓ Ready to upload</strong></p>
+                      <div id="fname">{fileName}</div>
+                      <p className="dz-formats" style={{ marginTop: 4 }}>Click to change file</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="dz-label"><strong>Click to browse</strong> or drag &amp; drop</p>
+                      <p className="dz-formats">PNG &nbsp;·&nbsp; JPG &nbsp;·&nbsp; WEBP</p>
+                    </>
+                  )}
+                </div>
+                <button
+                  className={`btn btn-primary ${loading ? "loading" : ""}`}
+                  onClick={handleUpload}
+                  disabled={loading}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg>
+                  Upload
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Filter/Histogram Sidebar Controls */}
-          {!isHistMode ? (
+          {/* Filter/Histogram/Hybrid Sidebar Controls */}
+          {!isHistMode && !isHybridMode && (
             <div className="panel-filter block">
               <div className="block-header">
                 <svg className="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
@@ -351,7 +406,9 @@ export default function App() {
                 </div>
               </div>
             </div>
-          ) : (
+          )}
+
+          {isHistMode && (
             <div className="panel-hist block">
               <div className="block-header">
                 <svg className="block-header-icon green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
@@ -382,13 +439,113 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {isHybridMode && (
+            <div className="panel-filter block">
+              <div className="block-header">
+                <svg className="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M4 20L10 4l4 16 6-10" />
+                </svg>
+                <span className="block-title">Hybrid Image Builder</span>
+              </div>
+              <div className="block-body">
+                <div className="hybrid-upload-group">
+                  <div className="hybrid-upload">
+                    <div className="hybrid-label">Low-Pass Image (Box 5×5)</div>
+                    <div
+                      className={`drop-zone ${hybridLowFile ? "has-file" : ""}`}
+                      onClick={() => hybridLowInputRef.current?.click()}
+                    >
+                      <input
+                        ref={hybridLowInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={e => handleHybridLowSelect(e.target.files[0])}
+                      />
+                      <svg className="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                      </svg>
+                      {hybridLowFile ? (
+                        <>
+                          <p className="dz-label" style={{ color: "var(--cyan)" }}><strong>✓ Ready</strong></p>
+                          <div>{hybridLowName}</div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="dz-label"><strong>Click to choose</strong> first image</p>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      className={`btn btn-primary ${loading ? "loading" : ""}`}
+                      onClick={handleHybridLowUpload}
+                      disabled={loading}
+                      style={{ marginTop: 8 }}
+                    >
+                      Apply Low-Pass
+                    </button>
+                  </div>
+
+                  <div className="hybrid-upload" style={{ marginTop: 16 }}>
+                    <div className="hybrid-label">High-Pass Image (Sobel 5×5)</div>
+                    <div
+                      className={`drop-zone ${hybridHighFile ? "has-file" : ""}`}
+                      onClick={() => hybridHighInputRef.current?.click()}
+                    >
+                      <input
+                        ref={hybridHighInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={e => handleHybridHighSelect(e.target.files[0])}
+                      />
+                      <svg className="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                      </svg>
+                      {hybridHighFile ? (
+                        <>
+                          <p className="dz-label" style={{ color: "var(--cyan)" }}><strong>✓ Ready</strong></p>
+                          <div>{hybridHighName}</div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="dz-label"><strong>Click to choose</strong> second image</p>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      className={`btn btn-primary ${loading ? "loading" : ""}`}
+                      onClick={handleHybridHighUpload}
+                      disabled={loading}
+                      style={{ marginTop: 8 }}
+                    >
+                      Apply High-Pass
+                    </button>
+                  </div>
+                </div>
+
+                <div className="divider" />
+
+                <button
+                  className={`btn btn-purple ${loading ? "loading" : ""}`}
+                  disabled={loading || !state.hybrid_low_url || !state.hybrid_high_url}
+                  onClick={handleHybridMix}
+                >
+                  Mix Hybrid Image
+                </button>
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* ── Main Content ─────────────────────────────────────── */}
         <section className="right">
-          {isHistMode ? (
+          {isHistMode && (
             <HistogramPanel state={state} onHistogram={handleHistogram} onEqualize={handleEqualize} loading={loading} />
-          ) : (
+          )}
+
+          {!isHistMode && !isHybridMode && (
             <div className="right-filter">
               {state.current_url ? (
                 <>
@@ -428,6 +585,50 @@ export default function App() {
                   </svg>
                   <div className="empty-title">No Image Loaded</div>
                   <div className="empty-sub">Upload an image from the sidebar to get started</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isHybridMode && (
+            <div className="right-filter">
+              {state.hybrid_low_url || state.hybrid_high_url || state.hybrid_out_url ? (
+                <div className="img-grid" style={{ gridTemplateColumns: "1fr 1.4fr" }}>
+                  <div>
+                    <ImageBox
+                      label="Low-Pass"
+                      badge="b-lpf"
+                      badgeText="BOX 5×5"
+                      url={state.hybrid_low_url}
+                    />
+                    <ImageBox
+                      label="High-Pass"
+                      badge="b-hpf"
+                      badgeText="SOBEL 5×5"
+                      url={state.hybrid_high_url}
+                    />
+                  </div>
+                  <div className="ibox">
+                    <div className="ibox-head">
+                      <span className="ibox-label">Hybrid Output</span>
+                      <span className="badge b-prev">HYBRID</span>
+                    </div>
+                    <div className="ibox-frame">
+                      {state.hybrid_out_url ? (
+                        <img src={resolveUrl(state.hybrid_out_url)} alt="Hybrid" />
+                      ) : (
+                        <div className="empty-sub">Upload both images and click Mix Hybrid Image</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <svg className="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <div className="empty-title">No Hybrid Image</div>
+                  <div className="empty-sub">Upload two images in the sidebar to build a hybrid image</div>
                 </div>
               )}
             </div>
