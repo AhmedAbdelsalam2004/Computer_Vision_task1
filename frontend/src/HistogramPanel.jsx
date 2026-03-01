@@ -4,6 +4,7 @@ const MEDIA_BASE = "http://localhost:8000";
 
 function resolveUrl(url) {
     if (!url) return null;
+    if (url.startsWith("http") || url.startsWith("data:")) return url;
     return url.startsWith("http") ? url : `${MEDIA_BASE}${url}`;
 }
 

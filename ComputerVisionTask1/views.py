@@ -1,6 +1,8 @@
 import os
 import json
 import uuid
+import base64
+from io import BytesIO
 import numpy as np
 import cv2
 from PIL import Image
@@ -10,6 +12,31 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import status
+
+
+def pil_to_data_url(pil_img):
+    """Encode a PIL image as a data URL (PNG)."""
+    buf = BytesIO()
+    pil_img.save(buf, format="PNG")
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+    return "data:image/png;base64," + encoded
+
+
+def data_url_to_pil(value):
+    """
+    Decode either a data URL or a legacy MEDIA_URL path into a PIL RGB image.
+    """
+    if not value:
+        raise ValueError("Empty image value")
+    if value.startswith("data:"):
+        try:
+            _, b64 = value.split(",", 1)
+        except ValueError:
+            raise ValueError("Invalid data URL")
+        img_bytes = base64.b64decode(b64)
+        return Image.open(BytesIO(img_bytes)).convert("RGB")
+    # Backwards compatibility for existing MEDIA_URL-based paths
+    return Image.open(ImageStorage.url_to_filepath(value)).convert("RGB")
 
 
 # ── Kernel Builders (OOP style) ────────────────────────────────────────────────
@@ -398,13 +425,16 @@ class UploadView(APIView):
         if not f:
             return Response({"error": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        fs = FileSystemStorage()
-        saved_name = fs.save(f.name, f)
-        url = settings.MEDIA_URL + saved_name
+        try:
+            pil_img = Image.open(f).convert("RGB")
+        except Exception as e:
+            return Response({"error": f"Invalid image file: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        data_url = pil_to_data_url(pil_img)
 
         state = SessionManager.get_state(request.session)
-        state["img_history"] = [url]
-        state["img_original"] = url
+        state["img_history"] = [data_url]
+        state["img_original"] = data_url
         state["img_last_filter"] = ""
         state["hist_orig_data"] = None
         state["hist_eq_data"] = None
@@ -412,8 +442,8 @@ class UploadView(APIView):
         SessionManager.save_state(request.session, state)
 
         return Response({
-            "current_url": url,
-            "original_url": url,
+            "current_url": data_url,
+            "original_url": data_url,
             "can_undo": False,
             "has_image": True,
             "history_length": 1,
@@ -478,9 +508,8 @@ class ApplyFilterView(APIView):
             if len(history) > 1:
                 history = history[:-1]
 
-        filepath = ImageStorage.url_to_filepath(history[-1])
         try:
-            pil_img = Image.open(filepath).convert("RGB")
+            pil_img = data_url_to_pil(history[-1])
             arr = np.array(pil_img)
             filtered_arr = FilterProcessor.apply_filter(
                 arr, filter_name, kernel_size=k,
@@ -488,11 +517,8 @@ class ApplyFilterView(APIView):
                 noise_amount=noise_amount
             )
             filtered_pil = Image.fromarray(filtered_arr)
-            prefix_name = (f"{filter_name}_{k}x{k}"
-                           if filter_name not in ("roberts", "canny")
-                           else f"{filter_name}")
-            new_url = ImageStorage.save_image(filtered_pil, prefix=prefix_name)
-            history = history + [new_url]
+            new_data_url = pil_to_data_url(filtered_pil)
+            history = history + [new_data_url]
         except Exception as e:
             return Response({"error": f"Filter failed: {e}"}, status=500)
 
@@ -506,7 +532,7 @@ class ApplyFilterView(APIView):
         SessionManager.save_state(request.session, state)
 
         return Response({
-            "current_url": new_url,
+            "current_url": new_data_url,
             "original_url": state["img_original"],
             "can_undo": len(history) > 1,
             "has_image": True,
@@ -581,7 +607,7 @@ class DrawHistogramView(APIView):
             return Response({"error": "Please upload an image first."}, status=400)
 
         try:
-            arr = np.array(Image.open(ImageStorage.url_to_filepath(history[0])).convert("RGB"))
+            arr = np.array(data_url_to_pil(history[0]))
             hist_orig_data = HistogramProcessor.compute_histogram(
                 HistogramProcessor.to_grayscale(arr)
             )
@@ -606,7 +632,7 @@ class EqualizeView(APIView):
             return Response({"error": "Please upload an image first."}, status=400)
 
         try:
-            arr = np.array(Image.open(ImageStorage.url_to_filepath(history[0])).convert("RGB"))
+            arr = np.array(data_url_to_pil(history[0]))
             gray = HistogramProcessor.to_grayscale(arr)
             hist_orig_data = HistogramProcessor.compute_histogram(gray)
             eq_gray, _ = HistogramProcessor.equalize_histogram(gray)
@@ -614,7 +640,7 @@ class EqualizeView(APIView):
             eq_pil = Image.fromarray(
                 np.stack([eq_gray, eq_gray, eq_gray], axis=2).astype(np.uint8)
             )
-            hist_eq_url = ImageStorage.save_image(eq_pil, prefix="equalized")
+            hist_eq_url = pil_to_data_url(eq_pil)
 
             state["hist_orig_data"] = hist_orig_data
             state["hist_eq_data"] = hist_eq_data
@@ -648,7 +674,7 @@ class HybridLowUploadView(APIView):
                 arr, "box", kernel_size=5, canny_low=50, canny_high=150, noise_amount=5
             )
             filtered_pil = Image.fromarray(filtered_arr)
-            low_url = ImageStorage.save_image(filtered_pil, prefix="hybrid_low")
+            low_url = pil_to_data_url(filtered_pil)
         except Exception as e:
             return Response({"error": f"Hybrid low-pass failed: {e}"}, status=500)
 
@@ -682,7 +708,7 @@ class HybridHighUploadView(APIView):
                 arr, "sobel", kernel_size=5, canny_low=50, canny_high=150, noise_amount=5
             )
             filtered_pil = Image.fromarray(filtered_arr)
-            high_url = ImageStorage.save_image(filtered_pil, prefix="hybrid_high")
+            high_url = pil_to_data_url(filtered_pil)
         except Exception as e:
             return Response({"error": f"Hybrid high-pass failed: {e}"}, status=500)
 
@@ -711,12 +737,8 @@ class HybridMixView(APIView):
             return Response({"error": "Please upload both images before mixing."}, status=400)
 
         try:
-            low_arr = np.array(
-                Image.open(ImageStorage.url_to_filepath(low_url)).convert("RGB")
-            ).astype(np.float32)
-            high_arr = np.array(
-                Image.open(ImageStorage.url_to_filepath(high_url)).convert("RGB")
-            ).astype(np.float32)
+            low_arr = np.array(data_url_to_pil(low_url)).astype(np.float32)
+            high_arr = np.array(data_url_to_pil(high_url)).astype(np.float32)
 
             # Ensure both images have the same size
             if low_arr.shape != high_arr.shape:
@@ -726,7 +748,7 @@ class HybridMixView(APIView):
 
             hybrid_arr = np.clip(low_arr + high_arr, 0, 255).astype(np.uint8)
             hybrid_pil = Image.fromarray(hybrid_arr)
-            hybrid_url = ImageStorage.save_image(hybrid_pil, prefix="hybrid_mix")
+            hybrid_url = pil_to_data_url(hybrid_pil)
         except Exception as e:
             return Response({"error": f"Hybrid mix failed: {e}"}, status=500)
 
