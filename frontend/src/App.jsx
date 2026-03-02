@@ -15,9 +15,16 @@ const EMPTY_STATE = {
   canny_low: 50,
   canny_high: 150,
   noise_amount: 5,
+  freq_cutoff: 30,
+  edge_x_url: null,
+  edge_y_url: null,
   hist_orig_data: null,
+  hist_orig_cdf: null,
   hist_eq_data: null,
+  hist_eq_cdf: null,
   hist_eq_url: null,
+  hist_rgb_data: null,
+  hist_rgb_cdf: null,
   history_length: 0,
   hybrid_low_url: null,
   hybrid_high_url: null,
@@ -38,6 +45,7 @@ export default function App() {
   const [cannyLow, setCannyLow] = useState(50);
   const [cannyHigh, setCannyHigh] = useState(150);
   const [noiseAmount, setNoiseAmount] = useState(5);
+  const [freqCutoff, setFreqCutoff] = useState(30);
   const [category, setCategory] = useState("filters");
   const [tab, setTab] = useState("lpf");
 
@@ -57,6 +65,7 @@ export default function App() {
       if (data.canny_low) setCannyLow(data.canny_low);
       if (data.canny_high) setCannyHigh(data.canny_high);
       if (data.noise_amount) setNoiseAmount(data.noise_amount);
+      if (data.freq_cutoff) setFreqCutoff(data.freq_cutoff);
       if (data.filter_name) setFilterName(data.filter_name);
     } catch {
       // fresh session, use defaults
@@ -102,6 +111,7 @@ export default function App() {
       canny_low: cannyLow,
       canny_high: cannyHigh,
       noise_amount: noiseAmount,
+      freq_cutoff: freqCutoff,
     }));
 
   const handleUndo = () => withLoading(api.undo);
@@ -266,12 +276,13 @@ export default function App() {
             <div className="panel-filter block">
               <div className="block-header">
                 <svg className="block-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
-                <span className="block-title">Apply Filter / Noise</span>
+                <span className="block-title">Apply Filter/ Noise/ Freq</span>
               </div>
               <div className="block-body">
                 <div className="cat-switch">
                   <button className={`cat-btn ${category === "filters" ? "active" : ""}`} onClick={() => setCategory("filters")}>Filters</button>
                   <button className={`cat-btn ${category === "noise" ? "active" : ""}`} onClick={() => setCategory("noise")}>Noise</button>
+                  <button className={`cat-btn ${category === "frequency" ? "active" : ""}`} onClick={() => setCategory("frequency")}>Frequency</button>
                 </div>
 
                 {category === "filters" && (
@@ -284,6 +295,7 @@ export default function App() {
                       {tab === "lpf" && [
                         { id: "box", name: "Box Filter", desc: "K = 1/9 × ones(3,3)" },
                         { id: "gaussian", name: "Gaussian Filter", desc: "Binomial outer product" },
+                        { id: "median", name: "Median Filter", desc: "Median over k×k window" },
                       ].map(f => (
                         <div key={f.id} className={`fcard lpf ${filterName === f.id ? "sel" : ""}`} onClick={() => setFilterName(f.id)}>
                           <div className="fcard-icon">
@@ -314,6 +326,26 @@ export default function App() {
                         </div>
                       ))}
                     </div>
+
+                    <div className="divider" />
+
+                    <div className="fgroup show">
+                      <div className="canny-title" style={{ marginBottom: 10 }}>Image Ops</div>
+                      {[
+                        { id: "normalize", name: "Normalize", desc: "Min-max per channel → [0,255]" },
+                      ].map(f => (
+                        <div key={f.id} className={`fcard lpf ${filterName === f.id ? "sel" : ""}`} onClick={() => setFilterName(f.id)}>
+                          <div className="fcard-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4" /></svg>
+                          </div>
+                          <div className="fcard-info">
+                            <span className="fcard-name">{f.name}</span>
+                            <span className="fcard-kernel">{f.desc}</span>
+                          </div>
+                          <div className="sel-indicator" />
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
 
@@ -323,6 +355,26 @@ export default function App() {
                       { id: "uniform_noise", name: "Uniform Noise", desc: "cv2.randu" },
                       { id: "gaussian_noise", name: "Gaussian Noise", desc: "cv2.randn" },
                       { id: "salt_pepper_noise", name: "Salt & Pepper", desc: "Probability Matrix" },
+                    ].map(f => (
+                      <div key={f.id} className={`fcard lpf ${filterName === f.id ? "sel" : ""}`} onClick={() => setFilterName(f.id)}>
+                        <div className="fcard-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4" /></svg>
+                        </div>
+                        <div className="fcard-info">
+                          <span className="fcard-name">{f.name}</span>
+                          <span className="fcard-kernel">{f.desc}</span>
+                        </div>
+                        <div className="sel-indicator" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {category === "frequency" && (
+                  <div className="fgroup show">
+                    {[
+                      { id: "freq_lpf", name: "Ideal Low-Pass (FFT)", desc: "Circular cutoff in frequency domain" },
+                      { id: "freq_hpf", name: "Ideal High-Pass (FFT)", desc: "1 − Low-pass mask" },
                     ].map(f => (
                       <div key={f.id} className={`fcard lpf ${filterName === f.id ? "sel" : ""}`} onClick={() => setFilterName(f.id)}>
                         <div className="fcard-icon">
@@ -383,6 +435,17 @@ export default function App() {
                   </div>
                 )}
 
+                {category === "frequency" && (
+                  <div className="noise-controls show">
+                    <div className="canny-title">Cutoff Radius</div>
+                    <div className="canny-row">
+                      <label>Cutoff</label>
+                      <input type="range" min="1" max="100" value={freqCutoff} onChange={e => setFreqCutoff(+e.target.value)} />
+                      <span className="canny-val">{freqCutoff}%</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   className={`btn btn-primary ${loading ? "loading" : ""}`}
                   disabled={!filterName || !state.has_image || loading}
@@ -391,7 +454,13 @@ export default function App() {
                   {loading ? <span className="spinner" /> : (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
                   )}
-                  {loading ? "Processing…" : category === "noise" ? "Apply Noise" : "Apply Filter"}
+                  {loading ? "Processing…" : category === "noise"
+                    ? "Apply Noise"
+                    : category === "frequency"
+                      ? "Apply Frequency Filter"
+                      : filterName === "normalize"
+                        ? "Normalize Image"
+                        : "Apply Filter"}
                 </button>
 
                 <div className="act-row">
@@ -568,14 +637,55 @@ export default function App() {
                   </div>
 
                   <div className="img-grid">
-                    <ImageBox label="Source" badge="b-src" badgeText="ORIGINAL" url={state.original_url || state.current_url} />
-                    <ImageBox
-                      label="Output"
-                      badge={getBadge(state.filter_name)}
-                      badgeText={state.filter_name ? state.filter_name.toUpperCase() : "PREVIEW"}
-                      url={state.current_url}
-                      downloadable
-                    />
+                    {(() => {
+                      const isEdgePreview = ["sobel", "prewitt", "roberts"].includes(state.filter_name) && (state.edge_x_url || state.edge_y_url);
+                      if (!isEdgePreview) {
+                        return (
+                          <>
+                            <ImageBox label="Source" badge="b-src" badgeText="ORIGINAL" url={state.original_url || state.current_url} />
+                            <ImageBox
+                              label="Output"
+                              badge={getBadge(state.filter_name)}
+                              badgeText={state.filter_name ? state.filter_name.toUpperCase() : "PREVIEW"}
+                              url={state.current_url}
+                              downloadable
+                            />
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          {/* First row: Original and |G| side by side */}
+                          <ImageBox
+                            label="Source"
+                            badge="b-src"
+                            badgeText="ORIGINAL"
+                            url={state.original_url || state.current_url}
+                          />
+                          <ImageBox
+                            label="Magnitude"
+                            badge="b-hpf"
+                            badgeText="|G|"
+                            url={state.current_url}
+                            downloadable
+                          />
+
+                          {/* Second row: Gx and Gy side by side */}
+                          <ImageBox
+                            label="Edge X"
+                            badge="b-hpf"
+                            badgeText="GX"
+                            url={state.edge_x_url}
+                          />
+                          <ImageBox
+                            label="Edge Y"
+                            badge="b-hpf"
+                            badgeText="GY"
+                            url={state.edge_y_url}
+                          />
+                        </>
+                      );
+                    })()}
                   </div>
                 </>
               ) : (
@@ -648,8 +758,10 @@ export default function App() {
 
 function getBadge(filter) {
   if (!filter) return "b-prev";
-  if (["box", "gaussian"].includes(filter)) return "b-lpf";
+  if (["box", "gaussian", "median", "freq_lpf"].includes(filter)) return "b-lpf";
   if (["uniform_noise", "gaussian_noise", "salt_pepper_noise"].includes(filter)) return "b-hist";
+  if (["normalize"].includes(filter)) return "b-prev";
+  if (["freq_hpf"].includes(filter)) return "b-hpf";
   return "b-hpf";
 }
 
