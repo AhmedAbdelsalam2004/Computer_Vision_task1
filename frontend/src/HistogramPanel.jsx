@@ -19,17 +19,54 @@ function HistogramCanvas({ data, color, label }) {
         const H = canvas.height;
         ctx.clearRect(0, 0, W, H);
 
-        const max = Math.max(...data);
-        const barW = W / data.length;
+        // Simple plot area with margins for axes/labels
+        const marginLeft = 32;
+        const marginRight = 8;
+        const marginTop = 8;
+        const marginBottom = 24;
+        const plotW = W - marginLeft - marginRight;
+        const plotH = H - marginTop - marginBottom;
 
-        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        const max = Math.max(...data) || 1;
+        const barW = plotW / data.length;
+
+        // Axes
+        ctx.strokeStyle = "#4b5563";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // y-axis
+        ctx.moveTo(marginLeft, marginTop);
+        ctx.lineTo(marginLeft, marginTop + plotH);
+        // x-axis
+        ctx.lineTo(marginLeft + plotW, marginTop + plotH);
+        ctx.stroke();
+
+        // Axis labels and ticks (x: 0, 128, 255; y: 0, max)
+        ctx.fillStyle = "var(--text3)";
+        ctx.font = "10px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        [0, 128, 255].forEach((v, idx) => {
+            const x = marginLeft + (v / 255) * plotW;
+            ctx.fillText(String(v), x, marginTop + plotH + 4);
+        });
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText("0", marginLeft - 4, marginTop + plotH);
+        ctx.fillText(String(max), marginLeft - 4, marginTop);
+
+        // Bars
+        const grad = ctx.createLinearGradient(0, marginTop, 0, marginTop + plotH);
         grad.addColorStop(0, color);
         grad.addColorStop(1, `${color}33`);
 
         ctx.fillStyle = grad;
         data.forEach((v, i) => {
-            const bh = (v / max) * (H - 4);
-            ctx.fillRect(i * barW, H - bh, barW, bh);
+            const norm = v / max;
+            const bh = norm * plotH;
+            const x = marginLeft + i * barW;
+            const y = marginTop + plotH - bh;
+            ctx.fillRect(x, y, barW, bh);
         });
     }, [data, color]);
 
@@ -52,13 +89,47 @@ function CdfCanvas({ data, color, label }) {
         const H = canvas.height;
         ctx.clearRect(0, 0, W, H);
 
+        const marginLeft = 32;
+        const marginRight = 8;
+        const marginTop = 8;
+        const marginBottom = 24;
+        const plotW = W - marginLeft - marginRight;
+        const plotH = H - marginTop - marginBottom;
+
         const max = data[data.length - 1] || 1;
+
+        // Axes
+        ctx.strokeStyle = "#4b5563";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(marginLeft, marginTop);
+        ctx.lineTo(marginLeft, marginTop + plotH);
+        ctx.lineTo(marginLeft + plotW, marginTop + plotH);
+        ctx.stroke();
+
+        // Axis labels (x: 0,128,255; y: 0,1.0)
+        ctx.fillStyle = "var(--text3)";
+        ctx.font = "10px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        [0, 128, 255].forEach(v => {
+            const x = marginLeft + (v / 255) * plotW;
+            ctx.fillText(String(v), x, marginTop + plotH + 4);
+        });
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText("0.0", marginLeft - 4, marginTop + plotH);
+        ctx.fillText("1.0", marginLeft - 4, marginTop);
+
+        // CDF curve (normalized 0–1)
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.beginPath();
+        const lastVal = max || 1;
         data.forEach((v, i) => {
-            const x = (i / (data.length - 1)) * (W - 4) + 2;
-            const y = H - ((v / max) * (H - 4) + 2);
+            const norm = v / lastVal;
+            const x = marginLeft + (i / (data.length - 1)) * plotW;
+            const y = marginTop + plotH - norm * plotH;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         });
