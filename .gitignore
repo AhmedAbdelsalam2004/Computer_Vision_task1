@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.test
+.env.production
+
+# Optional: Build output directories
+dist/
+build/"db.sqlite3" 
